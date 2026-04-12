@@ -1324,12 +1324,38 @@
     /* ═══════════════════════════════════════════
        DATA PERSISTENCE (localStorage)
        ═══════════════════════════════════════════ */
-    function saveData() {
-      const payload = {
-        tasks: tasks.map(t => ({ ...t })),
-        notes: notes.map(n => ({ ...n })),
-        nextTaskId, nextNoteId, migratedSessions
+
+    // Serialize to Flask-compatible snake_case format
+    function toFlaskFormat() {
+      return {
+        tasks: tasks.map(t => ({
+          id: t.id,
+          title: t.title,
+          priority: t.priority,
+          done: t.done,
+          created_at: t.createdAt,
+          timer_total_seconds: t.timerTotalSeconds,
+          timer_seconds_left: t.timerSecondsLeft,
+          timer_running: t.timerRunning,
+          timer_started_at: t.timerStartedAt,
+          completed_sessions: t.completedSessions,
+          task_notes: (t.taskNotes || []).map(n => ({
+            id: n.id,
+            text: n.text,
+            created_at: n.createdAt
+          }))
+        })),
+        notes: notes.map(n => ({
+          id: n.id,
+          text: n.text,
+          created_at: n.createdAt
+        })),
+        migrated_completed_sessions: migratedSessions
       };
+    }
+
+    function saveData() {
+      const payload = toFlaskFormat();
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
       } catch (_) { /* quota exceeded */ }
@@ -1639,12 +1665,7 @@
        ═══════════════════════════════════════════ */
     function exportData() {
       syncAllTimers();
-      const payload = {
-        tasks: tasks.map(t => ({ ...t })),
-        notes: notes.map(n => ({ ...n })),
-        nextTaskId, nextNoteId, migratedSessions,
-        exportedAt: new Date().toISOString()
-      };
+      const payload = toFlaskFormat();
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
