@@ -1,0 +1,2122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Productivity Desk — Focus Timer & Task Manager</title>
+  <meta name="description" content="A beautiful standalone productivity app with Pomodoro timers, task management, and notes. Works entirely in your browser.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ═══════════════════════════════════════════
+       DESIGN SYSTEM
+       ═══════════════════════════════════════════ */
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #111827;
+      --bg-card: rgba(17, 24, 39, 0.65);
+      --bg-card-hover: rgba(25, 35, 55, 0.75);
+      --bg-input: rgba(15, 20, 35, 0.8);
+      --bg-glass: rgba(255,255,255,0.04);
+
+      --border-subtle: rgba(255,255,255,0.06);
+      --border-default: rgba(255,255,255,0.1);
+      --border-hover: rgba(255,255,255,0.18);
+
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --text-inverse: #0f172a;
+
+      --accent-teal: #14b8a6;
+      --accent-teal-dim: rgba(20,184,166,0.15);
+      --accent-teal-glow: rgba(20,184,166,0.3);
+      --accent-blue: #3b82f6;
+      --accent-blue-dim: rgba(59,130,246,0.15);
+      --accent-purple: #a78bfa;
+      --accent-purple-dim: rgba(167,139,250,0.15);
+      --accent-amber: #f59e0b;
+      --accent-amber-dim: rgba(245,158,11,0.12);
+      --accent-red: #ef4444;
+      --accent-red-dim: rgba(239,68,68,0.12);
+      --accent-green: #22c55e;
+      --accent-green-dim: rgba(34,197,94,0.12);
+
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+      --shadow-md: 0 8px 24px rgba(0,0,0,0.4);
+      --shadow-lg: 0 16px 48px rgba(0,0,0,0.5);
+      --shadow-glow: 0 0 30px rgba(20,184,166,0.15);
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      --radius-full: 9999px;
+
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', Consolas, monospace;
+
+      --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-default: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ═══════════════════════════════════════════
+       RESET & BASE
+       ═══════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--text-primary);
+      background: var(--bg-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* Animated background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 10% 20%, rgba(20,184,166,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 90% 80%, rgba(59,130,246,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 50% 50%, rgba(167,139,250,0.04) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ═══════════════════════════════════════════
+       LAYOUT
+       ═══════════════════════════════════════════ */
+    .app-wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px 24px 40px;
+    }
+
+    /* ═══════════════════════════════════════════
+       HEADER
+       ═══════════════════════════════════════════ */
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 16px 0 24px;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: 28px;
+    }
+
+    .app-brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .app-logo {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--accent-teal), var(--accent-blue));
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: var(--shadow-glow);
+    }
+
+    .app-title {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-teal) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .app-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 400;
+      letter-spacing: 0.02em;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* ═══════════════════════════════════════════
+       BUTTONS
+       ═══════════════════════════════════════════ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      background: var(--bg-glass);
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+      user-select: none;
+      backdrop-filter: blur(8px);
+    }
+
+    .btn:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+      transform: translateY(-1px);
+    }
+
+    .btn:active { transform: translateY(0); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-teal), #0d9488);
+      border-color: transparent;
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 2px 12px rgba(20,184,166,0.25);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0d9488, #0f766e);
+      box-shadow: 0 4px 20px rgba(20,184,166,0.35);
+      color: #fff;
+    }
+
+    .btn-danger {
+      border-color: rgba(239,68,68,0.3);
+      color: var(--accent-red);
+      background: var(--accent-red-dim);
+    }
+    .btn-danger:hover {
+      background: rgba(239,68,68,0.2);
+      border-color: rgba(239,68,68,0.5);
+      color: #f87171;
+    }
+
+    .btn-ghost {
+      border-color: transparent;
+      background: transparent;
+      padding: 6px 8px;
+    }
+    .btn-ghost:hover {
+      background: rgba(255,255,255,0.06);
+      border-color: transparent;
+    }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 0.78rem;
+    }
+
+    .btn-icon {
+      padding: 6px;
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    /* ═══════════════════════════════════════════
+       CARDS
+       ═══════════════════════════════════════════ */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 20px;
+      backdrop-filter: blur(20px);
+      box-shadow: var(--shadow-sm);
+      transition: border-color var(--transition-default);
+    }
+
+    .card:hover {
+      border-color: var(--border-default);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      gap: 12px;
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      letter-spacing: -0.01em;
+    }
+
+    .card-title .icon {
+      font-size: 1.1rem;
+    }
+
+    /* ═══════════════════════════════════════════
+       INPUTS
+       ═══════════════════════════════════════════ */
+    .input, .select-input, .textarea-input {
+      padding: 9px 12px;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      background: var(--bg-input);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 0.88rem;
+      transition: all var(--transition-fast);
+      outline: none;
+    }
+
+    .input:focus, .select-input:focus, .textarea-input:focus {
+      border-color: var(--accent-teal);
+      box-shadow: 0 0 0 3px var(--accent-teal-dim);
+    }
+
+    .input::placeholder, .textarea-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .select-input {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 30px;
+    }
+
+    .textarea-input {
+      width: 100%;
+      min-height: 88px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    /* ═══════════════════════════════════════════
+       MAIN GRID
+       ═══════════════════════════════════════════ */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 1100px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    .side-column {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ═══════════════════════════════════════════
+       TASK ADD ROW
+       ═══════════════════════════════════════════ */
+    .task-add-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .task-add-row .input { flex: 1; min-width: 200px; }
+
+    /* ═══════════════════════════════════════════
+       FILTER BAR
+       ═══════════════════════════════════════════ */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .filter-tabs {
+      display: inline-flex;
+      background: var(--bg-glass);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+
+    .filter-tab {
+      padding: 5px 14px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      font-family: var(--font-sans);
+      transition: all var(--transition-fast);
+      user-select: none;
+    }
+
+    .filter-tab:hover { color: var(--text-secondary); }
+
+    .filter-tab.active {
+      background: var(--accent-teal);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .task-count {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+
+    /* ═══════════════════════════════════════════
+       TASK LIST
+       ═══════════════════════════════════════════ */
+    .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 14px;
+      min-height: 60px;
+    }
+
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background: var(--bg-glass);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .task-item.animate-in {
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .task-item:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-default);
+    }
+
+    .task-item.selected {
+      border-color: var(--accent-teal);
+      background: var(--accent-teal-dim);
+      box-shadow: 0 0 0 1px var(--accent-teal-dim), var(--shadow-glow);
+    }
+
+    .task-item.done {
+      opacity: 0.55;
+    }
+
+    .task-item.done .task-title-text {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+
+    /* Checkbox */
+    .task-check {
+      width: 20px; height: 20px;
+      border-radius: 6px;
+      border: 2px solid var(--border-hover);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      flex-shrink: 0;
+      font-size: 12px;
+      color: transparent;
+    }
+
+    .task-check:hover {
+      border-color: var(--accent-teal);
+      background: var(--accent-teal-dim);
+    }
+
+    .task-item.done .task-check {
+      background: var(--accent-green);
+      border-color: var(--accent-green);
+      color: #fff;
+    }
+
+    .task-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .task-title-text {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .task-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 3px;
+    }
+
+    /* Priority badge */
+    .priority-badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: var(--radius-full);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .priority-low     { background: rgba(100,116,139,0.15); color: #94a3b8; }
+    .priority-medium  { background: var(--accent-teal-dim); color: var(--accent-teal); }
+    .priority-high    { background: var(--accent-amber-dim); color: var(--accent-amber); }
+    .priority-critical { background: var(--accent-red-dim); color: var(--accent-red); }
+
+    .task-date {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    /* Timer chip on task row */
+    .task-timer-chip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+
+    .task-timer-chip.running {
+      color: var(--accent-teal);
+      background: var(--accent-teal-dim);
+      border-color: rgba(20,184,166,0.2);
+    }
+
+    .task-timer-chip.complete {
+      color: var(--accent-green);
+      background: var(--accent-green-dim);
+      border-color: rgba(34,197,94,0.2);
+    }
+
+    .pulse-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent-teal);
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    .task-actions {
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+      flex-shrink: 0;
+    }
+
+    .task-item:hover .task-actions { opacity: 1; }
+    .task-item.selected .task-actions { opacity: 1; }
+
+    .task-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .task-empty .empty-icon {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      opacity: 0.5;
+    }
+
+    /* ═══════════════════════════════════════════
+       TIMER PANEL (CIRCULAR)
+       ═══════════════════════════════════════════ */
+    .timer-panel { text-align: center; }
+
+    .timer-task-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .timer-task-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .timer-circle-wrapper {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      margin: 0 auto 16px;
+    }
+
+    .timer-circle-bg, .timer-circle-progress {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+    }
+
+    .timer-circle-bg circle {
+      fill: none;
+      stroke: rgba(255,255,255,0.05);
+      stroke-width: 6;
+    }
+
+    .timer-circle-progress circle {
+      fill: none;
+      stroke: url(#timerGradient);
+      stroke-width: 6;
+      stroke-linecap: round;
+      transform: rotate(-90deg);
+      transform-origin: center;
+      transition: stroke-dashoffset 0.8s ease;
+      filter: drop-shadow(0 0 6px rgba(20,184,166,0.4));
+    }
+
+    .timer-display {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .timer-time {
+      font-family: var(--font-mono);
+      font-size: 2.4rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+
+    .timer-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 500;
+    }
+
+    .timer-controls {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .timer-minutes-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .timer-minutes-row label {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .timer-minutes-row .input {
+      width: 70px;
+      text-align: center;
+      font-family: var(--font-mono);
+    }
+
+    .timer-sessions {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .session-count {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--accent-teal);
+      font-size: 0.9rem;
+    }
+
+    .timer-empty {
+      text-align: center;
+      padding: 30px 16px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .timer-empty .empty-icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+      opacity: 0.4;
+    }
+
+    /* Task Notes (inside timer panel) */
+    .task-notes-section {
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+      text-align: left;
+    }
+
+    .task-notes-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .task-notes-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .task-notes-input-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .task-notes-input-row .input {
+      flex: 1;
+      font-size: 0.82rem;
+      padding: 7px 10px;
+    }
+
+    .task-notes-scroll {
+      max-height: 180px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-right: 2px;
+    }
+
+    .task-notes-scroll::-webkit-scrollbar { width: 3px; }
+    .task-notes-scroll::-webkit-scrollbar-track { background: transparent; }
+    .task-notes-scroll::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 3px; }
+
+    .task-note-item {
+      padding: 7px 10px;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      background: var(--bg-glass);
+      font-size: 0.8rem;
+    }
+
+    .task-note-item.animate-in {
+      animation: slideIn 0.25s ease;
+    }
+
+    .task-note-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 3px;
+    }
+
+    .task-note-date {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+    }
+
+    .task-note-text {
+      color: var(--text-secondary);
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.45;
+    }
+
+    .task-notes-empty {
+      text-align: center;
+      padding: 12px;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+    }
+
+    /* ═══════════════════════════════════════════
+       NOTES
+       ═══════════════════════════════════════════ */
+    .notes-input-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .notes-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    .notes-scroll {
+      max-height: 280px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-right: 4px;
+    }
+
+    .notes-scroll::-webkit-scrollbar { width: 4px; }
+    .notes-scroll::-webkit-scrollbar-track { background: transparent; }
+    .notes-scroll::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 4px; }
+
+    .note-card {
+      padding: 10px 12px;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background: var(--bg-glass);
+    }
+
+    .note-card.animate-in {
+      animation: slideIn 0.25s ease;
+    }
+
+    .note-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .note-date {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .note-text {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.5;
+    }
+
+    .notes-empty {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+    }
+
+    /* ═══════════════════════════════════════════
+       STATS
+       ═══════════════════════════════════════════ */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .stat-card {
+      padding: 12px;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background: var(--bg-glass);
+      text-align: center;
+      transition: border-color var(--transition-fast);
+    }
+
+    .stat-card:hover { border-color: var(--border-default); }
+
+    .stat-card.wide { grid-column: 1 / -1; }
+
+    .stat-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 500;
+    }
+
+    .stat-value {
+      font-family: var(--font-mono);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-top: 2px;
+    }
+
+    .stat-value.teal { color: var(--accent-teal); }
+    .stat-value.blue { color: var(--accent-blue); }
+    .stat-value.amber { color: var(--accent-amber); }
+    .stat-value.green { color: var(--accent-green); }
+    .stat-value.purple { color: var(--accent-purple); }
+
+    /* ═══════════════════════════════════════════
+       TOAST NOTIFICATIONS
+       ═══════════════════════════════════════════ */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 18px;
+      border-radius: var(--radius-md);
+      background: rgba(17,24,39,0.92);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-default);
+      color: var(--text-primary);
+      font-size: 0.85rem;
+      font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      animation: toastIn 0.35s ease;
+      pointer-events: auto;
+      max-width: 360px;
+    }
+
+    .toast.success { border-color: rgba(34,197,94,0.4); }
+    .toast.info    { border-color: rgba(59,130,246,0.4); }
+    .toast.warning { border-color: rgba(245,158,11,0.4); }
+    .toast.error   { border-color: rgba(239,68,68,0.4); }
+
+    .toast.leaving {
+      animation: toastOut 0.3s ease forwards;
+    }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateX(40px) scale(0.95); }
+      to   { opacity: 1; transform: translateX(0) scale(1); }
+    }
+
+    @keyframes toastOut {
+      from { opacity: 1; transform: translateX(0) scale(1); }
+      to   { opacity: 0; transform: translateX(40px) scale(0.95); }
+    }
+
+    .toast-icon { font-size: 1.1rem; flex-shrink: 0; }
+
+    /* ═══════════════════════════════════════════
+       MODAL (for timer complete)
+       ═══════════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(6px);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-box {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-xl);
+      padding: 32px;
+      text-align: center;
+      max-width: 380px;
+      width: 90%;
+      box-shadow: var(--shadow-lg);
+      animation: modalIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.85) translateY(20px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .modal-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+    }
+
+    .modal-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .modal-message {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    /* ═══════════════════════════════════════════
+       KEYBOARD SHORTCUT HINT
+       ═══════════════════════════════════════════ */
+    .kbd {
+      display: inline-block;
+      padding: 1px 5px;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      border: 1px solid var(--border-default);
+      border-radius: 4px;
+      background: rgba(255,255,255,0.04);
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* ═══════════════════════════════════════════
+       RESPONSIVE
+       ═══════════════════════════════════════════ */
+    @media (max-width: 640px) {
+      .app-wrapper { padding: 12px 14px 30px; }
+      .app-header { padding: 10px 0 18px; }
+      .app-title { font-size: 1.25rem; }
+      .timer-circle-wrapper { width: 160px; height: 160px; }
+      .timer-time { font-size: 1.8rem; }
+      .task-item { padding: 10px 12px; gap: 10px; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .task-add-row .input { min-width: 140px; }
+      .task-actions { opacity: 1; }
+    }
+
+    /* ═══════════════════════════════════════════
+       SCROLLBAR (global)
+       ═══════════════════════════════════════════ */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 6px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+
+    /* Hidden helper */
+    .sr-only {
+      position: absolute; width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden;
+      clip: rect(0,0,0,0); border: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-wrapper">
+    <!-- ═══ HEADER ═══ -->
+    <header class="app-header" id="appHeader">
+      <div class="app-brand">
+        <div class="app-logo">⚡</div>
+        <div>
+          <div class="app-title">Productivity Desk</div>
+          <div class="app-subtitle">Focus Timer & Task Manager</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-sm" id="exportBtn" title="Export Data (JSON)">📥 Export</button>
+        <label class="btn btn-sm" id="importLabel" title="Import Data (JSON)">📤 Import
+          <input type="file" accept=".json" id="importInput" class="sr-only">
+        </label>
+      </div>
+    </header>
+
+    <!-- ═══ MAIN GRID ═══ -->
+    <div class="main-grid">
+      <!-- LEFT: TASK BOARD -->
+      <div>
+        <div class="card" id="taskBoardCard">
+          <div class="card-header">
+            <h2 class="card-title"><span class="icon">📋</span> Task Board</h2>
+            <button class="btn btn-sm btn-danger" id="clearDoneBtn">Clear Done</button>
+          </div>
+
+          <div class="task-add-row">
+            <input class="input" type="text" id="taskTitleInput" placeholder="What needs to be done?" autocomplete="off" maxlength="200">
+            <select class="select-input" id="taskPrioritySelect">
+              <option value="Low">Low</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="High">High</option>
+              <option value="Critical">Critical</option>
+            </select>
+            <button class="btn btn-primary" id="addTaskBtn">+ Add Task</button>
+          </div>
+
+          <div class="filter-bar">
+            <div class="filter-tabs" id="filterTabs">
+              <button class="filter-tab active" data-filter="All">All</button>
+              <button class="filter-tab" data-filter="Open">Open</button>
+              <button class="filter-tab" data-filter="Done">Done</button>
+            </div>
+            <span class="task-count" id="taskCount"></span>
+          </div>
+
+          <div class="task-list" id="taskList"></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: SIDE PANELS -->
+      <div class="side-column">
+        <!-- TIMER PANEL -->
+        <div class="card" id="timerCard">
+          <div class="card-header">
+            <h2 class="card-title"><span class="icon">⏱️</span> Focus Timer</h2>
+          </div>
+          <div id="timerContent"></div>
+        </div>
+
+        <!-- NOTES PANEL -->
+        <div class="card" id="notesCard">
+          <div class="card-header">
+            <h2 class="card-title"><span class="icon">📝</span> Quick Notes</h2>
+            <button class="btn btn-sm btn-danger" id="clearNotesBtn">Clear All</button>
+          </div>
+          <div class="notes-input-row">
+            <textarea class="textarea-input" id="noteTextarea" placeholder="Jot down a thought..." maxlength="2000"></textarea>
+            <div class="notes-actions">
+              <button class="btn btn-primary btn-sm" id="addNoteBtn">+ Add Note</button>
+            </div>
+          </div>
+          <div class="notes-scroll" id="notesList"></div>
+        </div>
+
+        <!-- STATS PANEL -->
+        <div class="card" id="statsCard">
+          <div class="card-header">
+            <h2 class="card-title"><span class="icon">📊</span> Dashboard</h2>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Total Tasks</div>
+              <div class="stat-value blue" id="statTotal">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Open</div>
+              <div class="stat-value amber" id="statOpen">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Done</div>
+              <div class="stat-value green" id="statDone">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Running</div>
+              <div class="stat-value teal" id="statRunning">0</div>
+            </div>
+            <div class="stat-card wide">
+              <div class="stat-label">Completed Focus Sessions</div>
+              <div class="stat-value purple" id="statSessions">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- SVG DEFS FOR TIMER GRADIENT (hidden) -->
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#14b8a6"/>
+        <stop offset="100%" stop-color="#3b82f6"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <script>
+    /* ═══════════════════════════════════════════
+       APPLICATION STATE
+       ═══════════════════════════════════════════ */
+    const STORAGE_KEY = 'productivity_desk_data';
+    const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
+
+    let tasks = [];
+    let notes = [];
+    let nextTaskId = 1;
+    let nextNoteId = 1;
+    let migratedSessions = 0;
+    let selectedTaskId = null;
+    let filterMode = 'All';
+
+    /* ═══════════════════════════════════════════
+       AUDIO (Web Audio API bell)
+       ═══════════════════════════════════════════ */
+    let audioCtx = null;
+
+    function ensureAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return audioCtx;
+    }
+
+    function playBell() {
+      try {
+        const ctx = ensureAudioContext();
+        const now = ctx.currentTime;
+
+        // A pleasant bell-like tone: two harmonics
+        [523.25, 659.25, 783.99].forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.15 / (i + 1), now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + i * 0.12);
+          osc.stop(now + 1.6);
+        });
+      } catch (_) { /* silently ignore on unsupported browsers */ }
+    }
+
+    /* ═══════════════════════════════════════════
+       TOAST SYSTEM
+       ═══════════════════════════════════════════ */
+    const toastContainer = document.getElementById('toastContainer');
+
+    function showToast(message, type = 'info', duration = 2800) {
+      const icons = { success: '✅', info: 'ℹ️', warning: '⚠️', error: '❌' };
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerHTML = `<span class="toast-icon">${icons[type] || ''}</span><span>${escapeHtml(message)}</span>`;
+      toastContainer.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.add('leaving');
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+    }
+
+    /* ═══════════════════════════════════════════
+       MODAL SYSTEM
+       ═══════════════════════════════════════════ */
+    let activeModal = null;
+
+    function showModal(title, message, actions) {
+      closeModal();
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal-box">
+          <div class="modal-icon">🎉</div>
+          <div class="modal-title">${escapeHtml(title)}</div>
+          <div class="modal-message">${escapeHtml(message)}</div>
+          <div class="modal-actions" id="modalActions"></div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      activeModal = overlay;
+
+      const actionsEl = overlay.querySelector('#modalActions');
+      actions.forEach(a => {
+        const btn = document.createElement('button');
+        btn.className = `btn ${a.primary ? 'btn-primary' : ''}`;
+        btn.textContent = a.label;
+        btn.onclick = () => { closeModal(); if (a.action) a.action(); };
+        actionsEl.appendChild(btn);
+      });
+
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeModal();
+      });
+    }
+
+    function closeModal() {
+      if (activeModal) { activeModal.remove(); activeModal = null; }
+    }
+
+    /* ═══════════════════════════════════════════
+       HELPERS
+       ═══════════════════════════════════════════ */
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function nowText() {
+      const d = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function nowEpoch() { return Date.now() / 1000; }
+
+    function formatDuration(totalSec) {
+      let s = Math.max(0, Math.floor(totalSec));
+      const h = Math.floor(s / 3600); s %= 3600;
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+      return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    }
+
+    function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
+
+    /* ═══════════════════════════════════════════
+       DATA PERSISTENCE (localStorage)
+       ═══════════════════════════════════════════ */
+    function saveData() {
+      const payload = {
+        tasks: tasks.map(t => ({ ...t })),
+        notes: notes.map(n => ({ ...n })),
+        nextTaskId, nextNoteId, migratedSessions
+      };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      } catch (_) { /* quota exceeded */ }
+    }
+
+    function loadData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+
+        tasks = (data.tasks || []).map(t => {
+          const taskNotes = (t.taskNotes || t.task_notes || []).map(n => ({
+            id: Number(n.id) || 0,
+            text: String(n.text || '').trim(),
+            createdAt: String(n.createdAt || n.created_at || ''),
+          })).filter(n => n.text);
+          const maxNoteId = taskNotes.length ? Math.max(...taskNotes.map(n => n.id)) : 0;
+          return {
+            id: Number(t.id) || 0,
+            title: String(t.title || 'Untitled'),
+            priority: PRIORITIES.includes(t.priority) ? t.priority : 'Medium',
+            done: !!t.done,
+            createdAt: String(t.createdAt || t.created_at || ''),
+            timerTotalSeconds: Math.max(1, Number(t.timerTotalSeconds || t.timer_total_seconds || 1500)),
+            timerSecondsLeft: Math.max(0, Number(t.timerSecondsLeft || t.timer_seconds_left || 1500)),
+            timerRunning: !!t.timerRunning || !!t.timer_running,
+            timerStartedAt: t.timerStartedAt != null ? Number(t.timerStartedAt) : (t.timer_started_at != null ? Number(t.timer_started_at) : null),
+            completedSessions: Math.max(0, Number(t.completedSessions || t.completed_sessions || 0)),
+            taskNotes: taskNotes,
+            nextTaskNoteId: maxNoteId + 1,
+          };
+        });
+
+        // Clamp timerSecondsLeft
+        tasks.forEach(t => {
+          if (t.timerSecondsLeft > t.timerTotalSeconds) t.timerSecondsLeft = t.timerTotalSeconds;
+        });
+
+        notes = (data.notes || []).map(n => ({
+          id: Number(n.id) || 0,
+          text: String(n.text || '').trim(),
+          createdAt: String(n.createdAt || n.created_at || ''),
+        })).filter(n => n.text);
+
+        nextTaskId = Number(data.nextTaskId) || (tasks.length ? Math.max(...tasks.map(t => t.id)) + 1 : 1);
+        nextNoteId = Number(data.nextNoteId) || (notes.length ? Math.max(...notes.map(n => n.id)) + 1 : 1);
+        migratedSessions = Math.max(0, Number(data.migratedSessions || data.migrated_completed_sessions) || 0);
+      } catch (_) { /* corrupt data, start fresh */ }
+    }
+
+    /* ═══════════════════════════════════════════
+       TIMER LOGIC
+       ═══════════════════════════════════════════ */
+    function syncTaskTimer(task) {
+      if (!task.timerRunning) return;
+      if (task.timerStartedAt == null) { task.timerStartedAt = nowEpoch(); return; }
+
+      const elapsed = Math.floor(nowEpoch() - task.timerStartedAt);
+      if (elapsed <= 0) return;
+
+      const remaining = task.timerSecondsLeft - elapsed;
+      if (remaining <= 0) {
+        task.timerSecondsLeft = 0;
+        task.timerRunning = false;
+        task.timerStartedAt = null;
+        task.completedSessions++;
+        onTimerComplete(task);
+        return;
+      }
+
+      task.timerSecondsLeft = remaining;
+      task.timerStartedAt = nowEpoch();
+    }
+
+    function syncAllTimers() {
+      tasks.forEach(syncTaskTimer);
+    }
+
+    function taskRemainingSeconds(task) {
+      let remaining = task.timerSecondsLeft || 0;
+      if (task.timerRunning && task.timerStartedAt != null) {
+        const elapsed = Math.floor(nowEpoch() - task.timerStartedAt);
+        if (elapsed > 0) remaining -= elapsed;
+      }
+      return Math.max(0, remaining);
+    }
+
+    function onTimerComplete(task) {
+      playBell();
+      showModal(
+        'Session Complete!',
+        `Great focus! "${task.title}" timer has finished. Ready for another round?`,
+        [
+          { label: 'Start New Session', primary: true, action: () => startNewSession(task.id) },
+          { label: 'Dismiss' }
+        ]
+      );
+      saveData();
+    }
+
+    /* ═══════════════════════════════════════════
+       TASK CRUD
+       ═══════════════════════════════════════════ */
+    function addTask(title, priority) {
+      title = title.trim();
+      if (!title) { showToast('Task title is required.', 'warning'); return; }
+      if (!PRIORITIES.includes(priority)) priority = 'Medium';
+
+      syncAllTimers();
+      const task = {
+        id: nextTaskId++,
+        title,
+        priority,
+        done: false,
+        createdAt: nowText(),
+        timerTotalSeconds: 25 * 60,
+        timerSecondsLeft: 25 * 60,
+        timerRunning: false,
+        timerStartedAt: null,
+        completedSessions: 0,
+        taskNotes: [],
+        nextTaskNoteId: 1,
+      };
+      tasks.push(task);
+      selectedTaskId = task.id;
+      saveData();
+      renderAll();
+      showToast('Task added!', 'success');
+    }
+
+    function toggleTask(taskId) {
+      syncAllTimers();
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+      task.done = !task.done;
+      if (task.done && task.timerRunning) {
+        task.timerRunning = false;
+        task.timerStartedAt = null;
+      }
+      saveData();
+      renderAll();
+      showToast(task.done ? 'Task completed! 🎉' : 'Task re-opened.', task.done ? 'success' : 'info');
+    }
+
+    function deleteTask(taskId) {
+      syncAllTimers();
+      tasks = tasks.filter(t => t.id !== taskId);
+      if (selectedTaskId === taskId) {
+        selectedTaskId = tasks.length ? tasks[0].id : null;
+      }
+      saveData();
+      renderAll();
+      showToast('Task deleted.', 'info');
+    }
+
+    function clearCompleted() {
+      syncAllTimers();
+      const count = tasks.filter(t => t.done).length;
+      if (count === 0) { showToast('No completed tasks to clear.', 'info'); return; }
+      // Accumulate sessions from cleared tasks
+      tasks.filter(t => t.done).forEach(t => { migratedSessions += t.completedSessions; });
+      tasks = tasks.filter(t => !t.done);
+      if (selectedTaskId && !tasks.find(t => t.id === selectedTaskId)) {
+        selectedTaskId = tasks.length ? tasks[0].id : null;
+      }
+      saveData();
+      renderAll();
+      showToast(`Cleared ${count} completed task${count !== 1 ? 's' : ''}.`, 'success');
+    }
+
+    /* ═══════════════════════════════════════════
+       TIMER CONTROLS
+       ═══════════════════════════════════════════ */
+    function startTimer(taskId, minutes) {
+      syncAllTimers();
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      if (minutes != null) {
+        const m = clamp(Math.floor(minutes), 1, 180);
+        const requested = m * 60;
+        if (task.timerSecondsLeft <= 0 || (!task.timerRunning && task.timerSecondsLeft === task.timerTotalSeconds)) {
+          task.timerTotalSeconds = requested;
+          task.timerSecondsLeft = requested;
+        }
+      }
+
+      if (task.timerSecondsLeft <= 0) {
+        task.timerSecondsLeft = task.timerTotalSeconds;
+      }
+
+      task.timerRunning = true;
+      task.timerStartedAt = nowEpoch();
+      saveData();
+      renderAll();
+      showToast('Timer started — stay focused!', 'success');
+    }
+
+    function pauseTimer(taskId) {
+      syncAllTimers();
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+      task.timerRunning = false;
+      task.timerStartedAt = null;
+      saveData();
+      renderAll();
+      showToast('Timer paused.', 'info');
+    }
+
+    function resetTimer(taskId, minutes) {
+      syncAllTimers();
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+      if (minutes != null) {
+        task.timerTotalSeconds = clamp(Math.floor(minutes), 1, 180) * 60;
+      }
+      task.timerSecondsLeft = task.timerTotalSeconds;
+      task.timerRunning = false;
+      task.timerStartedAt = null;
+      saveData();
+      renderAll();
+      showToast('Timer reset.', 'info');
+    }
+
+    function startNewSession(taskId, minutes) {
+      syncAllTimers();
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+      if (minutes != null) {
+        task.timerTotalSeconds = clamp(Math.floor(minutes), 1, 180) * 60;
+      }
+      task.timerSecondsLeft = task.timerTotalSeconds;
+      task.timerRunning = true;
+      task.timerStartedAt = nowEpoch();
+      saveData();
+      renderAll();
+      showToast('New focus session started!', 'success');
+    }
+
+    /* ═══════════════════════════════════════════
+       NOTES CRUD (global)
+       ═══════════════════════════════════════════ */
+    function addNote(text) {
+      text = text.trim();
+      if (!text) { showToast('Note text is required.', 'warning'); return; }
+      notes.push({ id: nextNoteId++, text, createdAt: nowText() });
+      saveData();
+      renderNotes();
+      showToast('Note saved.', 'success');
+    }
+
+    function deleteNote(noteId) {
+      notes = notes.filter(n => n.id !== noteId);
+      saveData();
+      renderNotes();
+    }
+
+    function clearNotes() {
+      if (notes.length === 0) { showToast('No notes to clear.', 'info'); return; }
+      notes = [];
+      saveData();
+      renderNotes();
+      showToast('All notes cleared.', 'info');
+    }
+
+    /* ═══════════════════════════════════════════
+       TASK NOTES CRUD (per-task)
+       ═══════════════════════════════════════════ */
+    function addTaskNote(taskId) {
+      const input = document.getElementById('taskNoteInput');
+      if (!input) return;
+      const text = input.value.trim();
+      if (!text) { showToast('Note text is required.', 'warning'); return; }
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+      if (!task.taskNotes) task.taskNotes = [];
+      if (!task.nextTaskNoteId) task.nextTaskNoteId = 1;
+      task.taskNotes.push({ id: task.nextTaskNoteId++, text, createdAt: nowText() });
+      input.value = '';
+      saveData();
+      renderTimerPanel();
+      showToast('Task note added.', 'success');
+    }
+
+    function deleteTaskNote(taskId, noteId) {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task || !task.taskNotes) return;
+      task.taskNotes = task.taskNotes.filter(n => n.id !== noteId);
+      saveData();
+      renderTimerPanel();
+    }
+
+    function clearTaskNotes(taskId) {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task || !task.taskNotes || task.taskNotes.length === 0) {
+        showToast('No task notes to clear.', 'info'); return;
+      }
+      task.taskNotes = [];
+      saveData();
+      renderTimerPanel();
+      showToast('Task notes cleared.', 'info');
+    }
+
+    /* ═══════════════════════════════════════════
+       IMPORT / EXPORT
+       ═══════════════════════════════════════════ */
+    function exportData() {
+      syncAllTimers();
+      const payload = {
+        tasks: tasks.map(t => ({ ...t })),
+        notes: notes.map(n => ({ ...n })),
+        nextTaskId, nextNoteId, migratedSessions,
+        exportedAt: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `productivity_desk_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast('Data exported!', 'success');
+    }
+
+    function importData(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const raw = e.target.result;
+          localStorage.setItem(STORAGE_KEY, raw);
+          loadData();
+          syncAllTimers();
+          selectedTaskId = tasks.length ? tasks[0].id : null;
+          saveData();
+          renderAll();
+          showToast('Data imported successfully!', 'success');
+        } catch (_) {
+          showToast('Failed to import — invalid file.', 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    /* ═══════════════════════════════════════════
+       RENDERING
+       ═══════════════════════════════════════════ */
+    function getFilteredTasks() {
+      if (filterMode === 'Open') return tasks.filter(t => !t.done);
+      if (filterMode === 'Done') return tasks.filter(t => t.done);
+      return tasks;
+    }
+
+    function renderTaskList() {
+      const list = document.getElementById('taskList');
+      const filtered = getFilteredTasks();
+
+      // Task count
+      const openCount = tasks.filter(t => !t.done).length;
+      const doneCount = tasks.filter(t => t.done).length;
+      document.getElementById('taskCount').textContent =
+        `${filtered.length} task${filtered.length !== 1 ? 's' : ''} · ${openCount} open · ${doneCount} done`;
+
+      if (filtered.length === 0) {
+        list.innerHTML = `
+          <div class="task-empty">
+            <div class="empty-icon">📭</div>
+            <div>${tasks.length === 0 ? 'No tasks yet. Add one above!' : 'No tasks match this filter.'}</div>
+          </div>
+        `;
+        return;
+      }
+
+      list.innerHTML = filtered.map(task => {
+        const remaining = taskRemainingSeconds(task);
+        const isRunning = task.timerRunning && remaining > 0;
+        const isComplete = remaining === 0 && task.timerTotalSeconds > 0;
+        const timerChipClass = isRunning ? 'running' : (isComplete ? 'complete' : '');
+        const priorityClass = {
+          Low: 'priority-low',
+          Medium: 'priority-medium',
+          High: 'priority-high',
+          Critical: 'priority-critical'
+        }[task.priority] || 'priority-medium';
+
+        return `
+          <div class="task-item animate-in ${task.done ? 'done' : ''} ${selectedTaskId === task.id ? 'selected' : ''}"
+               onclick="selectTask(${task.id})" id="task-${task.id}">
+            <div class="task-check" onclick="event.stopPropagation();toggleTask(${task.id})"
+                 title="${task.done ? 'Mark as open' : 'Mark as done'}">
+              ${task.done ? '✓' : ''}
+            </div>
+            <div class="task-info">
+              <div class="task-title-text">${escapeHtml(task.title)}</div>
+              <div class="task-meta">
+                <span class="priority-badge ${priorityClass}">${task.priority}</span>
+                <span class="task-date">${escapeHtml(task.createdAt)}</span>
+              </div>
+            </div>
+            <div class="task-timer-chip ${timerChipClass}" data-timer-chip="${task.id}">
+              ${isRunning ? '<span class="pulse-dot"></span>' : ''}
+              <span data-timer-text="${task.id}">${formatDuration(remaining)}</span>
+            </div>
+            <div class="task-actions">
+              <button class="btn btn-ghost btn-icon btn-sm" onclick="event.stopPropagation();${isRunning ? `pauseTimer(${task.id})` : `startTimer(${task.id})`}"
+                      title="${isRunning ? 'Pause' : 'Start'} timer">
+                ${isRunning ? '⏸' : '▶️'}
+              </button>
+              <button class="btn btn-ghost btn-icon btn-sm" onclick="event.stopPropagation();deleteTask(${task.id})"
+                      title="Delete task">🗑️</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderTimerPanel() {
+      const content = document.getElementById('timerContent');
+      const task = tasks.find(t => t.id === selectedTaskId);
+
+      if (!task) {
+        content.innerHTML = `
+          <div class="timer-empty">
+            <div class="empty-icon">🎯</div>
+            <div>Select a task to start a focus session</div>
+          </div>
+        `;
+        return;
+      }
+
+      const remaining = taskRemainingSeconds(task);
+      const total = task.timerTotalSeconds;
+      const progress = total > 0 ? ((total - remaining) / total) : 0;
+      const circumference = 2 * Math.PI * 90; // r=90
+      const dashOffset = circumference * (1 - progress);
+      const isRunning = task.timerRunning && remaining > 0;
+      const isComplete = remaining === 0;
+
+      let statusLabel = 'Paused';
+      if (isRunning) statusLabel = 'Focusing';
+      else if (isComplete) statusLabel = 'Complete';
+
+      const minutesVal = Math.max(1, Math.floor(total / 60));
+
+      content.innerHTML = `
+        <div class="timer-panel">
+          <div class="timer-task-name">${escapeHtml(task.title)}</div>
+          <div class="timer-task-meta">${task.priority} · ${task.done ? 'Done' : 'Open'} · ${escapeHtml(task.createdAt)}</div>
+
+          <div class="timer-circle-wrapper">
+            <svg class="timer-circle-bg" viewBox="0 0 200 200">
+              <circle cx="100" cy="100" r="90"></circle>
+            </svg>
+            <svg class="timer-circle-progress" viewBox="0 0 200 200">
+              <circle cx="100" cy="100" r="90"
+                      stroke-dasharray="${circumference}"
+                      stroke-dashoffset="${dashOffset}"></circle>
+            </svg>
+            <div class="timer-display">
+              <div class="timer-time">${formatDuration(remaining)}</div>
+              <div class="timer-label">${statusLabel}</div>
+            </div>
+          </div>
+
+          <div class="timer-minutes-row">
+            <label for="timerMinutesInput">Minutes:</label>
+            <input class="input" type="number" id="timerMinutesInput" min="1" max="180" value="${minutesVal}">
+          </div>
+
+          <div class="timer-controls">
+            <button class="btn btn-primary" onclick="handleTimerStart()">${isRunning ? '⏸ Pause' : '▶ Start'}</button>
+            <button class="btn" onclick="handleTimerReset()">↺ Reset</button>
+            <button class="btn" onclick="handleNewSession()">⟳ New Session</button>
+          </div>
+
+          <div class="timer-sessions">
+            Sessions completed: <span class="session-count">${task.completedSessions}</span>
+          </div>
+
+          <div class="task-notes-section">
+            <div class="task-notes-header">
+              <span class="task-notes-title">📌 Task Notes</span>
+              ${(task.taskNotes && task.taskNotes.length > 0) ? `<button class="btn btn-ghost btn-sm" onclick="clearTaskNotes(${task.id})" style="font-size:0.72rem;padding:2px 6px;">Clear</button>` : ''}
+            </div>
+            <div class="task-notes-input-row">
+              <input class="input" type="text" id="taskNoteInput" placeholder="Add a note for this task..." maxlength="500"
+                     onkeydown="if(event.key==='Enter'){addTaskNote(${task.id})}">
+              <button class="btn btn-primary btn-sm" onclick="addTaskNote(${task.id})">+</button>
+            </div>
+            <div class="task-notes-scroll">
+              ${renderTaskNotesHTML(task)}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTaskNotesHTML(task) {
+      const taskNotes = task.taskNotes || [];
+      if (taskNotes.length === 0) {
+        return '<div class="task-notes-empty">No notes for this task yet.</div>';
+      }
+      return [...taskNotes].sort((a, b) => b.id - a.id).map(note => `
+        <div class="task-note-item animate-in">
+          <div class="task-note-top">
+            <span class="task-note-date">${escapeHtml(note.createdAt)}</span>
+            <button class="btn btn-ghost btn-icon btn-sm" onclick="deleteTaskNote(${task.id}, ${note.id})" title="Delete" style="padding:2px 4px;font-size:0.75rem;">✕</button>
+          </div>
+          <div class="task-note-text">${escapeHtml(note.text)}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderNotes() {
+      const list = document.getElementById('notesList');
+      const sorted = [...notes].sort((a, b) => b.id - a.id);
+
+      if (sorted.length === 0) {
+        list.innerHTML = '<div class="notes-empty">No notes yet. Jot something down!</div>';
+        return;
+      }
+
+      list.innerHTML = sorted.map(note => `
+        <div class="note-card animate-in" id="note-${note.id}">
+          <div class="note-header">
+            <span class="note-date">${escapeHtml(note.createdAt)}</span>
+            <button class="btn btn-ghost btn-icon btn-sm" onclick="deleteNote(${note.id})" title="Delete note">✕</button>
+          </div>
+          <div class="note-text">${escapeHtml(note.text)}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderStats() {
+      const total = tasks.length;
+      const done = tasks.filter(t => t.done).length;
+      const open = total - done;
+      const running = tasks.filter(t => t.timerRunning && taskRemainingSeconds(t) > 0).length;
+      const sessions = migratedSessions + tasks.reduce((sum, t) => sum + t.completedSessions, 0);
+
+      document.getElementById('statTotal').textContent = total;
+      document.getElementById('statOpen').textContent = open;
+      document.getElementById('statDone').textContent = done;
+      document.getElementById('statRunning').textContent = running;
+      document.getElementById('statSessions').textContent = sessions;
+    }
+
+    function renderAll() {
+      renderTaskList();
+      renderTimerPanel();
+      renderNotes();
+      renderStats();
+    }
+
+    /* ═══════════════════════════════════════════
+       LIGHTWEIGHT TICK UPDATES (no full re-render)
+       Only updates timer text/progress without
+       destroying and recreating DOM elements.
+       ═══════════════════════════════════════════ */
+    function tickUpdateTaskTimers() {
+      tasks.forEach(task => {
+        // Update timer text in task list chip
+        const timerText = document.querySelector(`[data-timer-text="${task.id}"]`);
+        if (timerText) {
+          timerText.textContent = formatDuration(taskRemainingSeconds(task));
+        }
+      });
+    }
+
+    function tickUpdateTimerPanel() {
+      const task = tasks.find(t => t.id === selectedTaskId);
+      if (!task) return;
+
+      const remaining = taskRemainingSeconds(task);
+      const total = task.timerTotalSeconds;
+      const progress = total > 0 ? ((total - remaining) / total) : 0;
+      const circumference = 2 * Math.PI * 90;
+      const dashOffset = circumference * (1 - progress);
+      const isRunning = task.timerRunning && remaining > 0;
+      const isComplete = remaining === 0;
+
+      let statusLabel = 'Paused';
+      if (isRunning) statusLabel = 'Focusing';
+      else if (isComplete) statusLabel = 'Complete';
+
+      // Update timer display text
+      const timeEl = document.querySelector('.timer-time');
+      if (timeEl) timeEl.textContent = formatDuration(remaining);
+
+      // Update status label
+      const labelEl = document.querySelector('.timer-label');
+      if (labelEl) labelEl.textContent = statusLabel;
+
+      // Update circle progress
+      const circleEl = document.querySelector('.timer-circle-progress circle');
+      if (circleEl) {
+        circleEl.setAttribute('stroke-dasharray', circumference);
+        circleEl.setAttribute('stroke-dashoffset', dashOffset);
+      }
+
+      // Update sessions count
+      const sessEl = document.querySelector('.session-count');
+      if (sessEl) sessEl.textContent = task.completedSessions;
+    }
+
+    /* ═══════════════════════════════════════════
+       USER INTERACTIONS
+       ═══════════════════════════════════════════ */
+    function selectTask(taskId) {
+      selectedTaskId = taskId;
+      renderTaskList();
+      renderTimerPanel();
+    }
+
+    function getTimerMinutesInput() {
+      const el = document.getElementById('timerMinutesInput');
+      if (!el) return null;
+      const val = Number(el.value);
+      if (!Number.isInteger(val) || val < 1 || val > 180) {
+        showToast('Minutes must be between 1 and 180.', 'warning');
+        return null;
+      }
+      return val;
+    }
+
+    function handleTimerStart() {
+      if (!selectedTaskId) return;
+      const task = tasks.find(t => t.id === selectedTaskId);
+      if (!task) return;
+      const remaining = taskRemainingSeconds(task);
+      if (task.timerRunning && remaining > 0) {
+        pauseTimer(selectedTaskId);
+      } else {
+        const minutes = getTimerMinutesInput();
+        if (minutes === null) return;
+        startTimer(selectedTaskId, minutes);
+      }
+    }
+
+    function handleTimerReset() {
+      if (!selectedTaskId) return;
+      const minutes = getTimerMinutesInput();
+      if (minutes === null) return;
+      resetTimer(selectedTaskId, minutes);
+    }
+
+    function handleNewSession() {
+      if (!selectedTaskId) return;
+      const minutes = getTimerMinutesInput();
+      if (minutes === null) return;
+      startNewSession(selectedTaskId, minutes);
+    }
+
+    /* ═══════════════════════════════════════════
+       EVENT BINDING
+       ═══════════════════════════════════════════ */
+    // Add task
+    document.getElementById('addTaskBtn').addEventListener('click', () => {
+      const input = document.getElementById('taskTitleInput');
+      const select = document.getElementById('taskPrioritySelect');
+      addTask(input.value, select.value);
+      input.value = '';
+      input.focus();
+    });
+
+    document.getElementById('taskTitleInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const input = document.getElementById('taskTitleInput');
+        const select = document.getElementById('taskPrioritySelect');
+        addTask(input.value, select.value);
+        input.value = '';
+      }
+    });
+
+    // Filter tabs
+    document.getElementById('filterTabs').addEventListener('click', (e) => {
+      if (!e.target.classList.contains('filter-tab')) return;
+      filterMode = e.target.dataset.filter;
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      e.target.classList.add('active');
+      renderTaskList();
+    });
+
+    // Clear done
+    document.getElementById('clearDoneBtn').addEventListener('click', clearCompleted);
+
+    // Notes
+    document.getElementById('addNoteBtn').addEventListener('click', () => {
+      const textarea = document.getElementById('noteTextarea');
+      addNote(textarea.value);
+      textarea.value = '';
+    });
+
+    document.getElementById('noteTextarea').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        const textarea = document.getElementById('noteTextarea');
+        addNote(textarea.value);
+        textarea.value = '';
+      }
+    });
+
+    document.getElementById('clearNotesBtn').addEventListener('click', clearNotes);
+
+    // Export / Import
+    document.getElementById('exportBtn').addEventListener('click', exportData);
+    document.getElementById('importInput').addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        importData(e.target.files[0]);
+        e.target.value = '';
+      }
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      // Don't trigger when typing in inputs
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        document.getElementById('taskTitleInput').focus();
+      }
+      if (e.key === 'Escape') {
+        closeModal();
+      }
+    });
+
+    // Expose functions globally for inline onclick handlers
+    window.selectTask = selectTask;
+    window.toggleTask = toggleTask;
+    window.deleteTask = deleteTask;
+    window.deleteNote = deleteNote;
+    window.startTimer = startTimer;
+    window.pauseTimer = pauseTimer;
+    window.handleTimerStart = handleTimerStart;
+    window.handleTimerReset = handleTimerReset;
+    window.handleNewSession = handleNewSession;
+    window.addTaskNote = addTaskNote;
+    window.deleteTaskNote = deleteTaskNote;
+    window.clearTaskNotes = clearTaskNotes;
+
+    /* ═══════════════════════════════════════════
+       INIT & LIVE TICK
+       ═══════════════════════════════════════════ */
+    loadData();
+
+    // Auto select first task if none selected
+    if (selectedTaskId == null && tasks.length > 0) {
+      selectedTaskId = tasks[0].id;
+    }
+
+    renderAll();
+
+    // Tick every second for live timer updates
+    // Uses lightweight targeted updates instead of full re-renders
+    // to avoid re-triggering animations and destroying input focus
+    setInterval(() => {
+      let needsFullRender = false;
+
+      // Check for timer completions
+      tasks.forEach(task => {
+        if (!task.timerRunning) return;
+        const remaining = taskRemainingSeconds(task);
+        if (remaining <= 0) {
+          syncTaskTimer(task);
+          needsFullRender = true; // timer completed, need to update button states
+        }
+      });
+
+      if (needsFullRender) {
+        // A timer just finished — do a full re-render to update buttons/states
+        renderTaskList();
+        renderTimerPanel();
+      } else {
+        // Normal tick — only update timer text and progress, nothing else
+        tickUpdateTaskTimers();
+        tickUpdateTimerPanel();
+      }
+      renderStats();
+    }, 1000);
+
+    // Save periodically (every 30s) to catch running timer state
+    setInterval(() => {
+      syncAllTimers();
+      saveData();
+    }, 30000);
+
+    // Unlock audio context on first user interaction
+    document.addEventListener('click', () => { ensureAudioContext(); }, { once: true });
+  </script>
+</body>
+</html>
