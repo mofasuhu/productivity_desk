@@ -222,6 +222,11 @@
     }
 
     .btn:active { transform: translateY(0); }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
 
     .btn-primary {
       background: linear-gradient(135deg, var(--accent-teal), #0d9488);
@@ -965,7 +970,7 @@
       background: rgba(17,24,39,0.92);
       backdrop-filter: blur(16px);
       border: 1px solid var(--border-default);
-      color: var(--text-primary);
+      color: #f8fafc;
       font-size: 0.85rem;
       font-weight: 500;
       box-shadow: var(--shadow-lg);
@@ -1373,6 +1378,15 @@
 
     function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
 
+    function canRunTimer(task, showWarning = true) {
+      if (!task) return false;
+      if (!task.done) return true;
+      if (showWarning) {
+        showToast('Re-open this task before starting a timer.', 'warning');
+      }
+      return false;
+    }
+
     function updateThemeToggleLabel() {
       const btn = document.getElementById('themeToggleBtn');
       if (!btn) return;
@@ -1631,6 +1645,7 @@
       syncAllTimers();
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
+      if (!canRunTimer(task)) return;
 
       if (minutes != null) {
         const m = clamp(Math.floor(minutes), 1, 180);
@@ -1682,6 +1697,7 @@
       syncAllTimers();
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
+      if (!canRunTimer(task)) return;
       if (minutes != null) {
         task.timerTotalSeconds = clamp(Math.floor(minutes), 1, 180) * 60;
       }
@@ -1862,7 +1878,7 @@
             <div>Done tasks: <strong>${doneTasks.length}</strong></div>
             <div>Running timers: <strong>${tasks.filter(t => t.timerRunning && taskRemainingSeconds(t) > 0).length}</strong></div>
             <div>Completed sessions: <strong>${sessions}</strong></div>
-            <div>Focus time tracked: <strong>${formatDuration(totalFocusSeconds)}</strong></div>
+            <div>Focus time tracked (all tasks): <strong>${formatDuration(totalFocusSeconds)}</strong></div>
           </div>
 
           <h2>Open Tasks</h2>
@@ -1944,6 +1960,14 @@
           High: 'priority-high',
           Critical: 'priority-critical'
         }[task.priority] || 'priority-medium';
+        const timerActionButton = task.done
+          ? ''
+          : `
+              <button class="btn btn-ghost btn-icon btn-sm" onclick="event.stopPropagation();${isRunning ? `pauseTimer(${task.id})` : `startTimer(${task.id})`}"
+                      title="${isRunning ? 'Pause' : 'Start'} timer">
+                ${isRunning ? '⏸' : '▶️'}
+              </button>
+            `;
 
         return `
           <div class="task-item animate-in ${task.done ? 'done' : ''} ${selectedTaskId === task.id ? 'selected' : ''}"
@@ -1964,10 +1988,7 @@
               <span data-timer-text="${task.id}">${formatDuration(remaining)}</span>
             </div>
             <div class="task-actions">
-              <button class="btn btn-ghost btn-icon btn-sm" onclick="event.stopPropagation();${isRunning ? `pauseTimer(${task.id})` : `startTimer(${task.id})`}"
-                      title="${isRunning ? 'Pause' : 'Start'} timer">
-                ${isRunning ? '⏸' : '▶️'}
-              </button>
+              ${timerActionButton}
               <button class="btn btn-ghost btn-icon btn-sm" onclick="event.stopPropagation();deleteTask(${task.id})"
                       title="Delete task">🗑️</button>
             </div>
@@ -1997,6 +2018,7 @@
       const dashOffset = circumference * (1 - progress);
       const isRunning = task.timerRunning && remaining > 0;
       const isComplete = remaining === 0;
+      const timerControlsDisabled = task.done;
 
       let statusLabel = 'Paused';
       if (isRunning) statusLabel = 'Focusing';
@@ -2030,10 +2052,11 @@
           </div>
 
           <div class="timer-controls">
-            <button class="btn btn-primary" onclick="handleTimerStart()">${isRunning ? '⏸ Pause' : '▶ Start'}</button>
-            <button class="btn" onclick="handleTimerReset()">↺ Reset</button>
-            <button class="btn" onclick="handleNewSession()">⟳ New Session</button>
+            <button class="btn btn-primary" onclick="handleTimerStart()" ${timerControlsDisabled ? 'disabled' : ''}>${isRunning ? '⏸ Pause' : '▶ Start'}</button>
+            <button class="btn" onclick="handleTimerReset()" ${timerControlsDisabled ? 'disabled' : ''}>↺ Reset</button>
+            <button class="btn" onclick="handleNewSession()" ${timerControlsDisabled ? 'disabled' : ''}>⟳ New Session</button>
           </div>
+          ${timerControlsDisabled ? '<div class="mini-note" style="text-align:center;color:var(--text-muted);margin-bottom:8px;">Task is done. Re-open it from the task list to run timer controls.</div>' : ''}
 
           <div class="timer-sessions">
             <div>Sessions completed: <span class="session-count">${task.completedSessions}</span></div>
@@ -2192,6 +2215,7 @@
       if (!selectedTaskId) return;
       const task = tasks.find(t => t.id === selectedTaskId);
       if (!task) return;
+      if (!canRunTimer(task)) return;
       const remaining = taskRemainingSeconds(task);
       if (task.timerRunning && remaining > 0) {
         pauseTimer(selectedTaskId);
@@ -2211,6 +2235,8 @@
 
     function handleNewSession() {
       if (!selectedTaskId) return;
+      const task = tasks.find(t => t.id === selectedTaskId);
+      if (!canRunTimer(task)) return;
       const minutes = getTimerMinutesInput();
       if (minutes === null) return;
       startNewSession(selectedTaskId, minutes);
