@@ -1388,12 +1388,17 @@
     function applyTheme(theme) {
       currentTheme = theme === 'light' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', currentTheme);
-      localStorage.setItem(THEME_KEY, currentTheme);
+      try {
+        localStorage.setItem(THEME_KEY, currentTheme);
+      } catch (_) { /* storage unavailable */ }
       updateThemeToggleLabel();
     }
 
     function initializeTheme() {
-      const savedTheme = localStorage.getItem(THEME_KEY);
+      let savedTheme = null;
+      try {
+        savedTheme = localStorage.getItem(THEME_KEY);
+      } catch (_) { /* storage unavailable */ }
       if (savedTheme === 'light' || savedTheme === 'dark') {
         applyTheme(savedTheme);
         return;
