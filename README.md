@@ -14,7 +14,7 @@ A beautiful, standalone productivity app with Pomodoro focus timers, task manage
 - **Quick Notes** — Global scratchpad for quick thoughts
 - **Dashboard** — Live stats: total tasks, open, done, running timers, completed sessions
 - **Sound Alerts** — Bell notification when a focus session completes
-- **Export / Import** — JSON data portability (compatible with the Flask version)
+- **Export / Import** — JSON data portability
 - **Offline & Private** — All data stored in `localStorage`, nothing leaves your browser
 
 ## 🎨 Design
@@ -25,31 +25,18 @@ A beautiful, standalone productivity app with Pomodoro focus timers, task manage
 - Toast notifications & modal dialogs
 - Smooth micro-animations and responsive layout
 
-## 🚀 Deploy
+## 🚀 Run / Deploy
 
-This is a single `index.html` file. Deploy it anywhere that serves static files:
+This is a single `index.html` file. Open it directly, or serve it as a static file.
 
-- **GitHub Pages** — Push to repo, enable Pages in Settings
-- **Netlify / Vercel** — Drag and drop the file
-- **Local** — Just open `index.html` in your browser
+- **Local (quickest)**: double-click `index.html`
+- **Local (recommended)**: serve the folder with any static server (avoids some browser file URL restrictions)
+- **GitHub Pages**: push to a repo, enable Pages in Settings
+- **Netlify / Vercel**: deploy as a static site
 
-## 📦 Migrating from Flask Version
+## 📦 Data portability
 
-If you were using the Flask (`app.py`) version:
-
-1. Locate your `productivity_data.json` file
-2. Open the standalone app in your browser
-3. Click **📤 Import** in the header and select the JSON file
-4. All tasks, notes, timers, and sessions will be imported
-
-## 🛠️ Development
-
-The Flask server version is included for reference:
-
-```bash
-pip install -r requirements.txt
-python app.py
-```
+Use **📤 Import** / **📥 Export** in the header to move your data between browsers or devices. Export produces a JSON file you can store or re-import later.
 
 ## 📄 License
 
