@@ -486,6 +486,16 @@ INDEX_HTML = """<!doctype html>
       border-collapse: collapse;
       margin-top: 10px;
     }
+    .task-table-wrap.scrollable {
+      max-height: 820px;
+      overflow-y: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+    .task-table-wrap.scrollable .task-table {
+      margin-top: 0;
+    }
     .task-table th, .task-table td {
       border-bottom: 1px solid #e5e7eb;
       padding: 8px 6px;
@@ -625,19 +635,21 @@ INDEX_HTML = """<!doctype html>
           </select>
           <button id="clearDoneBtn">Clear Completed</button>
         </div>
-        <table class="task-table">
-          <thead>
-            <tr>
-              <th style="width: 30%;">Task</th>
-              <th style="width: 10%;">State</th>
-              <th style="width: 10%;">Priority</th>
-              <th style="width: 12%;">Timer</th>
-              <th style="width: 13%;">Created</th>
-              <th style="width: 25%;">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="taskBody"></tbody>
-        </table>
+        <div id="taskTableWrap" class="task-table-wrap">
+          <table class="task-table">
+            <thead>
+              <tr>
+                <th style="width: 30%;">Task</th>
+                <th style="width: 10%;">State</th>
+                <th style="width: 10%;">Priority</th>
+                <th style="width: 12%;">Timer</th>
+                <th style="width: 13%;">Created</th>
+                <th style="width: 25%;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="taskBody"></tbody>
+          </table>
+        </div>
       </div>
 
       <div>
@@ -707,6 +719,7 @@ INDEX_HTML = """<!doctype html>
 
     const statusEl = document.getElementById("status");
     const taskBody = document.getElementById("taskBody");
+    const taskTableWrap = document.getElementById("taskTableWrap");
     const taskFilter = document.getElementById("taskFilter");
     const taskTitleInput = document.getElementById("taskTitle");
     const taskPriority = document.getElementById("taskPriority");
@@ -830,7 +843,10 @@ INDEX_HTML = """<!doctype html>
     }
 
     function renderTasks() {
-      const rows = filteredTasks().map((task) => {
+      const tasks = filteredTasks();
+      taskTableWrap.classList.toggle("scrollable", tasks.length > 20);
+
+      const rows = tasks.map((task) => {
         const titleClass = task.done ? "task-done" : "";
         const selectedClass = selectedTaskId === task.id ? "task-selected" : "";
         const rowStateClass = task.done ? "task-done-row" : "task-open-row";
