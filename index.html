@@ -439,6 +439,10 @@
       margin-top: 14px;
       min-height: 60px;
     }
+    .task-list.scrollable {
+      overflow-y: auto;
+      padding-right: 4px;
+    }
 
     .task-item {
       display: flex;
@@ -1940,6 +1944,8 @@
         `${filtered.length} task${filtered.length !== 1 ? 's' : ''} · ${openCount} open · ${doneCount} done`;
 
       if (filtered.length === 0) {
+        list.classList.remove('scrollable');
+        list.style.maxHeight = '';
         list.innerHTML = `
           <div class="task-empty">
             <div class="empty-icon">📭</div>
@@ -1995,6 +2001,18 @@
           </div>
         `;
       }).join('');
+
+      const shouldScroll = filtered.length > 20;
+      list.classList.toggle('scrollable', shouldScroll);
+      if (!shouldScroll) {
+        list.style.maxHeight = '';
+        return;
+      }
+
+      const visibleTaskItems = Array.from(list.querySelectorAll('.task-item')).slice(0, 20);
+      const totalVisibleHeight = visibleTaskItems.reduce((sum, item) => sum + item.offsetHeight, 0);
+      const totalGapHeight = Math.max(0, visibleTaskItems.length - 1) * 8;
+      list.style.maxHeight = `${Math.ceil(totalVisibleHeight + totalGapHeight)}px`;
     }
 
     function renderTimerPanel() {
