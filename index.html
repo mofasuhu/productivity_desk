@@ -281,6 +281,8 @@
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-xl);
       padding: 20px;
+      width: 100%;
+      min-width: 0;
       backdrop-filter: blur(20px);
       box-shadow: var(--shadow-sm);
       transition: border-color var(--transition-default);
@@ -361,6 +363,11 @@
       gap: 20px;
       align-items: start;
     }
+    .main-grid > .card { min-width: 0; }
+
+    #taskBoardCard { grid-column: 1 / 2; }
+    #timerCard { grid-column: 2 / 3; }
+    #notesCard { grid-column: 3 / 4; }
 
     #taskBoardCard { grid-column: 1 / 2; }
     #timerCard { grid-column: 2 / 3; }
@@ -1086,6 +1093,9 @@
       .app-wrapper { padding: 12px 14px 30px; }
       .app-header { padding: 10px 0 18px; }
       .app-title { font-size: 1.25rem; }
+      .card { padding: 14px; border-radius: var(--radius-lg); }
+      .card-title { font-size: 0.92rem; }
+      .stat-value { font-size: 1.3rem; }
       .header-actions {
         width: 100%;
         justify-content: flex-start;
@@ -1100,7 +1110,9 @@
       .timer-time { font-size: 1.8rem; }
       .task-item { padding: 10px 12px; gap: 10px; }
       .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .task-add-row .input { min-width: 140px; }
+      /* Keep task add controls from forcing card overflow on phones */
+      .task-add-row .input { min-width: 0; }
+      .task-add-row .select-input { min-width: 0; }
       .task-actions { opacity: 1; }
     }
 
