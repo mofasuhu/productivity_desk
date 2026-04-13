@@ -357,19 +357,18 @@
        ═══════════════════════════════════════════ */
     .main-grid {
       display: grid;
-      grid-template-columns: 1fr 380px;
+      grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
       gap: 20px;
       align-items: start;
     }
 
+    #taskBoardCard { grid-column: 1 / 2; }
+    #timerCard { grid-column: 2 / 3; }
+    #notesCard { grid-column: 3 / 4; }
+
     @media (max-width: 1100px) {
       .main-grid { grid-template-columns: 1fr; }
-    }
-
-    .side-column {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
+      #taskBoardCard, #timerCard, #notesCard { grid-column: auto; }
     }
 
     /* ═══════════════════════════════════════════
@@ -912,7 +911,7 @@
        ═══════════════════════════════════════════ */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 10px;
     }
 
@@ -927,7 +926,8 @@
 
     .stat-card:hover { border-color: var(--border-default); }
 
-    .stat-card.wide { grid-column: 1 / -1; }
+    .stat-card.wide { grid-column: auto; }
+    #statsCard { margin-bottom: 20px; }
 
     .stat-label {
       font-size: 0.72rem;
@@ -1099,7 +1099,7 @@
       .timer-circle-wrapper { width: 160px; height: 160px; }
       .timer-time { font-size: 1.8rem; }
       .task-item { padding: 10px 12px; gap: 10px; }
-      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .task-add-row .input { min-width: 140px; }
       .task-actions { opacity: 1; }
     }
@@ -1141,93 +1141,85 @@
       </div>
     </header>
 
-    <!-- ═══ MAIN GRID ═══ -->
-    <div class="main-grid">
-      <!-- LEFT: TASK BOARD -->
-      <div>
-        <div class="card" id="taskBoardCard">
-          <div class="card-header">
-            <h2 class="card-title"><span class="icon">📋</span> Task Board</h2>
-            <button class="btn btn-sm btn-danger" id="clearDoneBtn">Clear Done</button>
-          </div>
-
-          <div class="task-add-row">
-            <input class="input" type="text" id="taskTitleInput" placeholder="What needs to be done?" autocomplete="off" maxlength="200">
-            <select class="select-input" id="taskPrioritySelect">
-              <option value="Low">Low</option>
-              <option value="Medium" selected>Medium</option>
-              <option value="High">High</option>
-              <option value="Critical">Critical</option>
-            </select>
-            <button class="btn btn-primary" id="addTaskBtn">+ Add Task</button>
-          </div>
-
-          <div class="filter-bar">
-            <div class="filter-tabs" id="filterTabs">
-              <button class="filter-tab active" data-filter="All">All</button>
-              <button class="filter-tab" data-filter="Open">Open</button>
-              <button class="filter-tab" data-filter="Done">Done</button>
-            </div>
-            <span class="task-count" id="taskCount"></span>
-          </div>
-
-          <div class="task-list" id="taskList"></div>
+    <!-- ═══ DASHBOARD (FULL WIDTH TOP) ═══ -->
+    <div class="card" id="statsCard">
+      <div class="card-header">
+        <h2 class="card-title"><span class="icon">📊</span> Dashboard</h2>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total Tasks</div>
+          <div class="stat-value blue" id="statTotal">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Open</div>
+          <div class="stat-value amber" id="statOpen">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Done</div>
+          <div class="stat-value green" id="statDone">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Running</div>
+          <div class="stat-value teal" id="statRunning">0</div>
+        </div>
+        <div class="stat-card wide">
+          <div class="stat-label">Completed Focus Sessions</div>
+          <div class="stat-value purple" id="statSessions">0</div>
         </div>
       </div>
+    </div>
 
-      <!-- RIGHT: SIDE PANELS -->
-      <div class="side-column">
-        <!-- TIMER PANEL -->
-        <div class="card" id="timerCard">
-          <div class="card-header">
-            <h2 class="card-title"><span class="icon">⏱️</span> Focus Timer</h2>
-          </div>
-          <div id="timerContent"></div>
+    <!-- ═══ MAIN GRID ═══ -->
+    <div class="main-grid">
+      <div class="card" id="taskBoardCard">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">📋</span> Task Board</h2>
+          <button class="btn btn-sm btn-danger" id="clearDoneBtn">Clear Done</button>
         </div>
 
-        <!-- NOTES PANEL -->
-        <div class="card" id="notesCard">
-          <div class="card-header">
-            <h2 class="card-title"><span class="icon">📝</span> Quick Notes</h2>
-            <button class="btn btn-sm btn-danger" id="clearNotesBtn">Clear All</button>
-          </div>
-          <div class="notes-input-row">
-            <textarea class="textarea-input" id="noteTextarea" placeholder="Jot down a thought..." maxlength="2000"></textarea>
-            <div class="notes-actions">
-              <button class="btn btn-primary btn-sm" id="addNoteBtn">+ Add Note</button>
-            </div>
-          </div>
-          <div class="notes-scroll" id="notesList"></div>
+        <div class="task-add-row">
+          <input class="input" type="text" id="taskTitleInput" placeholder="What needs to be done?" autocomplete="off" maxlength="200">
+          <select class="select-input" id="taskPrioritySelect">
+            <option value="Low">Low</option>
+            <option value="Medium" selected>Medium</option>
+            <option value="High">High</option>
+            <option value="Critical">Critical</option>
+          </select>
+          <button class="btn btn-primary" id="addTaskBtn">+ Add Task</button>
         </div>
 
-        <!-- STATS PANEL -->
-        <div class="card" id="statsCard">
-          <div class="card-header">
-            <h2 class="card-title"><span class="icon">📊</span> Dashboard</h2>
+        <div class="filter-bar">
+          <div class="filter-tabs" id="filterTabs">
+            <button class="filter-tab active" data-filter="All">All</button>
+            <button class="filter-tab" data-filter="Open">Open</button>
+            <button class="filter-tab" data-filter="Done">Done</button>
           </div>
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-label">Total Tasks</div>
-              <div class="stat-value blue" id="statTotal">0</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Open</div>
-              <div class="stat-value amber" id="statOpen">0</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Done</div>
-              <div class="stat-value green" id="statDone">0</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Running</div>
-              <div class="stat-value teal" id="statRunning">0</div>
-            </div>
-            <div class="stat-card wide">
-              <div class="stat-label">Completed Focus Sessions</div>
-              <div class="stat-value purple" id="statSessions">0</div>
-            </div>
+          <span class="task-count" id="taskCount"></span>
+        </div>
+
+        <div class="task-list" id="taskList"></div>
+      </div>
+
+      <div class="card" id="timerCard">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">⏱️</span> Focus Timer</h2>
+        </div>
+        <div id="timerContent"></div>
+      </div>
+
+      <div class="card" id="notesCard">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">📝</span> Quick Notes</h2>
+          <button class="btn btn-sm btn-danger" id="clearNotesBtn">Clear All</button>
+        </div>
+        <div class="notes-input-row">
+          <textarea class="textarea-input" id="noteTextarea" placeholder="Jot down a thought..." maxlength="2000"></textarea>
+          <div class="notes-actions">
+            <button class="btn btn-primary btn-sm" id="addNoteBtn">+ Add Note</button>
           </div>
         </div>
+        <div class="notes-scroll" id="notesList"></div>
       </div>
     </div>
   </div>
@@ -2002,14 +1994,14 @@
         `;
       }).join('');
 
-      const shouldScroll = filtered.length > 20;
+      const shouldScroll = filtered.length > 5;
       list.classList.toggle('scrollable', shouldScroll);
       if (!shouldScroll) {
         list.style.maxHeight = '';
         return;
       }
 
-      const visibleTaskItems = Array.from(list.querySelectorAll('.task-item')).slice(0, 20);
+      const visibleTaskItems = Array.from(list.querySelectorAll('.task-item')).slice(0, 5);
       const totalVisibleHeight = visibleTaskItems.reduce((sum, item) => sum + item.offsetHeight, 0);
       const totalGapHeight = Math.max(0, visibleTaskItems.length - 1) * 8;
       list.style.maxHeight = `${Math.ceil(totalVisibleHeight + totalGapHeight)}px`;
