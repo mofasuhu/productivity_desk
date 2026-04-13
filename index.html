@@ -189,6 +189,7 @@
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
+      justify-content: flex-end;
     }
 
     /* ═══════════════════════════════════════════
@@ -1076,6 +1077,16 @@
       .app-wrapper { padding: 12px 14px 30px; }
       .app-header { padding: 10px 0 18px; }
       .app-title { font-size: 1.25rem; }
+      .header-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+      .header-actions > .btn,
+      .header-actions > label.btn {
+        flex: 1 1 calc(50% - 8px);
+        justify-content: center;
+        min-width: 132px;
+      }
       .timer-circle-wrapper { width: 160px; height: 160px; }
       .timer-time { font-size: 1.8rem; }
       .task-item { padding: 10px 12px; gap: 10px; }
