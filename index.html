@@ -62,6 +62,29 @@
       --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
     }
 
+    :root[data-theme="light"] {
+      --bg-primary: #eef2ff;
+      --bg-secondary: #ffffff;
+      --bg-card: rgba(255,255,255,0.92);
+      --bg-card-hover: rgba(248,250,252,0.98);
+      --bg-input: #ffffff;
+      --bg-glass: rgba(255,255,255,0.86);
+
+      --border-subtle: rgba(15,23,42,0.08);
+      --border-default: rgba(15,23,42,0.14);
+      --border-hover: rgba(15,23,42,0.24);
+
+      --text-primary: #0f172a;
+      --text-secondary: #334155;
+      --text-muted: #64748b;
+      --text-inverse: #f8fafc;
+
+      --shadow-sm: 0 2px 10px rgba(15,23,42,0.09);
+      --shadow-md: 0 10px 26px rgba(15,23,42,0.14);
+      --shadow-lg: 0 20px 52px rgba(15,23,42,0.18);
+      --shadow-glow: 0 0 28px rgba(20,184,166,0.24);
+    }
+
     /* ═══════════════════════════════════════════
        RESET & BASE
        ═══════════════════════════════════════════ */
@@ -80,6 +103,7 @@
       min-height: 100vh;
       overflow-x: hidden;
       line-height: 1.6;
+      transition: background var(--transition-default), color var(--transition-default);
     }
 
     /* Animated background */
@@ -93,6 +117,13 @@
         radial-gradient(ellipse 50% 40% at 50% 50%, rgba(167,139,250,0.04) 0%, transparent 60%);
       pointer-events: none;
       z-index: 0;
+    }
+
+    :root[data-theme="light"] body::before {
+      background:
+        radial-gradient(ellipse 80% 60% at 10% 20%, rgba(20,184,166,0.12) 0%, transparent 58%),
+        radial-gradient(ellipse 60% 50% at 90% 80%, rgba(59,130,246,0.1) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 50% 50%, rgba(167,139,250,0.08) 0%, transparent 62%);
     }
 
     /* ═══════════════════════════════════════════
@@ -680,9 +711,8 @@
     .timer-sessions {
       font-size: 0.78rem;
       color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: grid;
+      justify-items: center;
       gap: 6px;
     }
 
@@ -690,6 +720,13 @@
       font-family: var(--font-mono);
       font-weight: 700;
       color: var(--accent-teal);
+      font-size: 0.9rem;
+    }
+
+    .timer-spent {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--accent-blue);
       font-size: 0.9rem;
     }
 
@@ -1075,7 +1112,9 @@
         </div>
       </div>
       <div class="header-actions">
+        <button class="btn btn-sm" id="themeToggleBtn" title="Toggle theme">🌙 Dark</button>
         <button class="btn btn-sm" id="exportBtn" title="Export Data (JSON)">📥 Export</button>
+        <button class="btn btn-sm" id="exportReportBtn" title="Export Task Board Report (PDF)">🧾 Report PDF</button>
         <label class="btn btn-sm" id="importLabel" title="Import Data (JSON)">📤 Import
           <input type="file" accept=".json" id="importInput" class="sr-only">
         </label>
@@ -1191,6 +1230,7 @@
        APPLICATION STATE
        ═══════════════════════════════════════════ */
     const STORAGE_KEY = 'productivity_desk_data';
+    const THEME_KEY = 'productivity_desk_theme';
     const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
 
     let tasks = [];
@@ -1200,6 +1240,7 @@
     let migratedSessions = 0;
     let selectedTaskId = null;
     let filterMode = 'All';
+    let currentTheme = 'dark';
 
     /* ═══════════════════════════════════════════
        AUDIO (Web Audio API bell)
@@ -1321,6 +1362,35 @@
 
     function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
 
+    function updateThemeToggleLabel() {
+      const btn = document.getElementById('themeToggleBtn');
+      if (!btn) return;
+      if (currentTheme === 'light') {
+        btn.textContent = '☀️ Light';
+        btn.title = 'Switch to dark theme';
+      } else {
+        btn.textContent = '🌙 Dark';
+        btn.title = 'Switch to light theme';
+      }
+    }
+
+    function applyTheme(theme) {
+      currentTheme = theme === 'light' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      localStorage.setItem(THEME_KEY, currentTheme);
+      updateThemeToggleLabel();
+    }
+
+    function initializeTheme() {
+      const savedTheme = localStorage.getItem(THEME_KEY);
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        applyTheme(savedTheme);
+        return;
+      }
+      const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+      applyTheme(prefersLight ? 'light' : 'dark');
+    }
+
     /* ═══════════════════════════════════════════
        DATA PERSISTENCE (localStorage)
        ═══════════════════════════════════════════ */
@@ -1339,6 +1409,7 @@
           timer_running: t.timerRunning,
           timer_started_at: t.timerStartedAt,
           completed_sessions: t.completedSessions,
+          focus_seconds_spent: t.focusSecondsSpent,
           task_notes: (t.taskNotes || []).map(n => ({
             id: n.id,
             text: n.text,
@@ -1385,6 +1456,7 @@
             timerRunning: !!t.timerRunning || !!t.timer_running,
             timerStartedAt: t.timerStartedAt != null ? Number(t.timerStartedAt) : (t.timer_started_at != null ? Number(t.timer_started_at) : null),
             completedSessions: Math.max(0, Number(t.completedSessions || t.completed_sessions || 0)),
+            focusSecondsSpent: Math.max(0, Number(t.focusSecondsSpent || t.focus_seconds_spent || 0)),
             taskNotes: taskNotes,
             nextTaskNoteId: maxNoteId + 1,
           };
@@ -1416,6 +1488,8 @@
 
       const elapsed = Math.floor(nowEpoch() - task.timerStartedAt);
       if (elapsed <= 0) return;
+      const consumed = Math.min(elapsed, task.timerSecondsLeft);
+      task.focusSecondsSpent = Math.max(0, Number(task.focusSecondsSpent || 0) + consumed);
 
       const remaining = task.timerSecondsLeft - elapsed;
       if (remaining <= 0) {
@@ -1442,6 +1516,17 @@
         if (elapsed > 0) remaining -= elapsed;
       }
       return Math.max(0, remaining);
+    }
+
+    function taskTotalFocusSeconds(task) {
+      let spent = Math.max(0, Number(task.focusSecondsSpent || 0));
+      if (task.timerRunning && task.timerStartedAt != null) {
+        const elapsed = Math.floor(nowEpoch() - task.timerStartedAt);
+        if (elapsed > 0) {
+          spent += Math.min(elapsed, task.timerSecondsLeft);
+        }
+      }
+      return spent;
     }
 
     function onTimerComplete(task) {
@@ -1477,6 +1562,7 @@
         timerRunning: false,
         timerStartedAt: null,
         completedSessions: 0,
+        focusSecondsSpent: 0,
         taskNotes: [],
         nextTaskNoteId: 1,
       };
@@ -1675,6 +1761,119 @@
       showToast('Data exported!', 'success');
     }
 
+    function exportBoardReport() {
+      syncAllTimers();
+      const exportDate = new Date();
+      const sessions = migratedSessions + tasks.reduce((sum, t) => sum + t.completedSessions, 0);
+      const totalFocusSeconds = tasks.reduce((sum, t) => sum + Math.max(0, Number(t.focusSecondsSpent || 0)), 0);
+      const openTasks = tasks.filter(t => !t.done);
+      const doneTasks = tasks.filter(t => t.done);
+      const priorityOrder = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+      const orderedTasks = (items) => [...items].sort((a, b) => {
+        const prioDiff = (priorityOrder[a.priority] ?? 99) - (priorityOrder[b.priority] ?? 99);
+        if (prioDiff !== 0) return prioDiff;
+        return a.id - b.id;
+      });
+      const toLines = (items) => {
+        if (items.length === 0) {
+          return '<li><em>No tasks in this section.</em></li>';
+        }
+        return orderedTasks(items).map((task) => {
+          const taskNotes = task.taskNotes || [];
+          const notesHtml = taskNotes.length > 0
+            ? `
+              <div class="report-subtitle">Task Notes (${taskNotes.length})</div>
+              <ul>
+                ${[...taskNotes].sort((a, b) => b.id - a.id).map((note) => `
+                  <li><span class="report-muted">[${escapeHtml(note.createdAt)}]</span> ${escapeHtml(String(note.text).replace(/\n+/g, ' '))}</li>
+                `).join('')}
+              </ul>
+            `
+            : '<div class="report-muted">No task notes.</div>';
+
+          return `
+            <li>
+              <div><strong>${escapeHtml(task.title)}</strong></div>
+              <div class="report-muted">
+                Priority: ${escapeHtml(task.priority)} ·
+                Status: ${task.done ? 'Done' : 'Open'} ·
+                Created: ${escapeHtml(task.createdAt)}
+              </div>
+              <div class="report-muted">
+                Sessions completed: ${task.completedSessions} ·
+                Total focus time: ${formatDuration(task.focusSecondsSpent || 0)}
+              </div>
+              ${notesHtml}
+            </li>
+          `;
+        }).join('');
+      };
+
+      const quickNotesHtml = notes.length === 0
+        ? '<li><em>No quick notes available.</em></li>'
+        : [...notes].sort((a, b) => b.id - a.id).map((note) => `
+            <li><span class="report-muted">[${escapeHtml(note.createdAt)}]</span> ${escapeHtml(String(note.text).replace(/\n+/g, ' '))}</li>
+          `).join('');
+
+      const reportWindow = window.open('', '_blank');
+      if (!reportWindow) {
+        showToast('Pop-up blocked. Please allow pop-ups to export PDF report.', 'warning');
+        return;
+      }
+
+      const reportHtml = `
+        <!doctype html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Task Board Report</title>
+          <style>
+            body { font-family: Arial, Helvetica, sans-serif; margin: 24px; color: #0f172a; line-height: 1.45; }
+            h1, h2 { margin: 0 0 10px; }
+            h1 { font-size: 1.5rem; }
+            h2 { font-size: 1.1rem; margin-top: 20px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; }
+            .report-muted { color: #475569; font-size: 0.92rem; }
+            .report-subtitle { margin-top: 8px; font-weight: 600; font-size: 0.92rem; }
+            ul { margin: 8px 0 0 18px; padding: 0; }
+            li { margin: 6px 0; }
+            .summary-grid { display: grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap: 8px 18px; }
+            @media print { body { margin: 14mm; } }
+          </style>
+        </head>
+        <body>
+          <h1>Productivity Desk — Task Board Report</h1>
+          <div class="report-muted">Generated: ${escapeHtml(exportDate.toISOString())}</div>
+
+          <h2>Summary</h2>
+          <div class="summary-grid">
+            <div>Total tasks: <strong>${tasks.length}</strong></div>
+            <div>Open tasks: <strong>${openTasks.length}</strong></div>
+            <div>Done tasks: <strong>${doneTasks.length}</strong></div>
+            <div>Running timers: <strong>${tasks.filter(t => t.timerRunning && taskRemainingSeconds(t) > 0).length}</strong></div>
+            <div>Completed sessions: <strong>${sessions}</strong></div>
+            <div>Focus time tracked: <strong>${formatDuration(totalFocusSeconds)}</strong></div>
+          </div>
+
+          <h2>Open Tasks</h2>
+          <ul>${toLines(openTasks)}</ul>
+
+          <h2>Done Tasks</h2>
+          <ul>${toLines(doneTasks)}</ul>
+
+          <h2>Quick Notes</h2>
+          <ul>${quickNotesHtml}</ul>
+        </body>
+        </html>
+      `;
+
+      reportWindow.document.open();
+      reportWindow.document.write(reportHtml);
+      reportWindow.document.close();
+      reportWindow.focus();
+      reportWindow.print();
+      showToast('Report opened. Choose "Save as PDF" in print dialog.', 'success');
+    }
+
     function importData(file) {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -1826,7 +2025,8 @@
           </div>
 
           <div class="timer-sessions">
-            Sessions completed: <span class="session-count">${task.completedSessions}</span>
+            <div>Sessions completed: <span class="session-count">${task.completedSessions}</span></div>
+            <div>Total focus time: <span class="timer-spent">${formatDuration(taskTotalFocusSeconds(task))}</span></div>
           </div>
 
           <div class="task-notes-section">
@@ -1953,6 +2153,8 @@
       // Update sessions count
       const sessEl = document.querySelector('.session-count');
       if (sessEl) sessEl.textContent = task.completedSessions;
+      const spentEl = document.querySelector('.timer-spent');
+      if (spentEl) spentEl.textContent = formatDuration(taskTotalFocusSeconds(task));
     }
 
     /* ═══════════════════════════════════════════
@@ -2055,6 +2257,11 @@
 
     // Export / Import
     document.getElementById('exportBtn').addEventListener('click', exportData);
+    document.getElementById('exportReportBtn').addEventListener('click', exportBoardReport);
+    document.getElementById('themeToggleBtn').addEventListener('click', () => {
+      applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+      showToast(`Switched to ${currentTheme} theme.`, 'info');
+    });
     document.getElementById('importInput').addEventListener('change', (e) => {
       if (e.target.files && e.target.files[0]) {
         importData(e.target.files[0]);
@@ -2093,6 +2300,7 @@
     /* ═══════════════════════════════════════════
        INIT & LIVE TICK
        ═══════════════════════════════════════════ */
+    initializeTheme();
     loadData();
 
     // Auto select first task if none selected
